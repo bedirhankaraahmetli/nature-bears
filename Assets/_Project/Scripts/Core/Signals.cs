@@ -76,6 +76,71 @@ namespace NatureBears.Core
     }
 
     /// <summary>
+    /// Fired by BuildingManager after a successful purchase/upgrade, and once per
+    /// building (owned or not, level 0 included) on load-hydration (with
+    /// <see cref="UpgradeCost"/> = 0) so UI and views refresh without polling.
+    /// </summary>
+    public readonly struct OnBuildingUpgradedSignal
+    {
+        public readonly string BuildingId;
+        public readonly int NewLevel;
+        /// <summary>The cost that was just paid. 0 for the load-hydration broadcast.</summary>
+        public readonly double UpgradeCost;
+
+        public OnBuildingUpgradedSignal(string buildingId, int newLevel, double upgradeCost)
+        {
+            BuildingId = buildingId;
+            NewLevel = newLevel;
+            UpgradeCost = upgradeCost;
+        }
+    }
+
+    /// <summary>
+    /// Fired by WorkerBearManager when a building starts or stops actually
+    /// producing (level reached 1, or a converter starved / regained inputs).
+    /// Fired on state TRANSITIONS only — worker views animate from this.
+    /// </summary>
+    public readonly struct OnBuildingProductionStateChangedSignal
+    {
+        public readonly string BuildingId;
+        public readonly bool IsProducing;
+
+        public OnBuildingProductionStateChangedSignal(string buildingId, bool isProducing)
+        {
+            BuildingId = buildingId;
+            IsProducing = isProducing;
+        }
+    }
+
+    /// <summary>Fired by CraftingManager when a cook cycle begins (ingredients already spent).</summary>
+    public readonly struct OnCraftingStartedSignal
+    {
+        /// <summary>BuildingData.id of the crafting station.</summary>
+        public readonly string RecipeId;
+        public readonly float Duration;
+
+        public OnCraftingStartedSignal(string recipeId, float duration)
+        {
+            RecipeId = recipeId;
+            Duration = duration;
+        }
+    }
+
+    /// <summary>Fired by CraftingManager when a cook cycle finishes (output granted and auto-sold).</summary>
+    public readonly struct OnCraftingCompletedSignal
+    {
+        /// <summary>BuildingData.id of the crafting station.</summary>
+        public readonly string RecipeId;
+        public readonly int Amount;
+
+        public OnCraftingCompletedSignal(string recipeId, int amount)
+        {
+            RecipeId = recipeId;
+            Amount = amount;
+        }
+    }
+
+    /// <summary>
     /// Fired on every campfire tap — including blocked ones (fever already
     /// active or daily limit reached), so the UI can give deny feedback.
     /// Gauge fill fraction = GaugeTaps / TapsToFill.

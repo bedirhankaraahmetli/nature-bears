@@ -148,6 +148,51 @@ namespace NatureBears.Save
             return OfflineEarningsCapped ? 0 : _offlineSecondsAtLoad;
         }
 
+#if UNITY_EDITOR
+        // ------------------------------------------------------------------
+        // Dev helpers (editor-only, stripped from device builds)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Right-click the SaveManager component header in Play Mode →
+        /// "DEV New Game". Deletes the save file and reloads, so every manager
+        /// re-hydrates from a fresh SaveData via GameLoadedSignal — a true
+        /// first-run state without leaving Play Mode.
+        /// </summary>
+        [ContextMenu("DEV New Game (Delete Save + Reload)")]
+        private void DevNewGame()
+        {
+            DeleteSave();
+            Load();
+            Debug.Log("[DEV] Save deleted — fresh game state loaded.");
+        }
+
+        /// <summary>
+        /// Menu bar → NatureBears → DEV → Delete Save File. Works outside Play
+        /// Mode too (deletes the file so the next run is a clean first run).
+        /// </summary>
+        [UnityEditor.MenuItem("NatureBears/DEV/Delete Save File")]
+        private static void DevDeleteSaveFile()
+        {
+            if (Application.isPlaying && Instance != null)
+            {
+                Instance.DevNewGame();
+                return;
+            }
+
+            string path = Path.Combine(Application.persistentDataPath, FileName);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                Debug.Log($"[DEV] Deleted save file: {path}");
+            }
+            else
+            {
+                Debug.Log("[DEV] No save file to delete.");
+            }
+        }
+#endif
+
         // ------------------------------------------------------------------
         // Anti-time-skip
         // ------------------------------------------------------------------

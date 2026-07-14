@@ -78,6 +78,29 @@ namespace NatureBears.Gameplay
             return true;
         }
 
+#if UNITY_EDITOR
+        // ------------------------------------------------------------------
+        // Dev helpers (editor-only, stripped from device builds)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Right-click the ResourceManager component header (or its ⋮ menu) in
+        /// Play Mode → "DEV Zero All Resources". Broadcasts every balance so the
+        /// UI updates; the next autosave persists the zeros.
+        /// </summary>
+        [ContextMenu("DEV Zero All Resources")]
+        private void DevZeroAllResources()
+        {
+            for (int i = 0; i < AllTypes.Length; i++)
+            {
+                _balances[AllTypes[i]] = 0;
+                FireBalanceChanged(AllTypes[i], 0);
+            }
+
+            Debug.Log("[DEV] All resource balances zeroed.");
+        }
+#endif
+
         // ------------------------------------------------------------------
         // Signal handlers
         // ------------------------------------------------------------------

@@ -39,12 +39,24 @@ namespace NatureBears.Data
         [Tooltip("Seconds per production cycle at level 1.")]
         public float cycleDurationSeconds = 1f;
 
+        [Header("Production Scaling  (production = base * levelProductionMultiplier * level)")]
+        [Tooltip("Linear production scaling: effective per-cycle amounts = amountPerCycle * levelProductionMultiplier * level.")]
+        public float levelProductionMultiplier = 1f;
+        [Tooltip("Driven by CraftingManager (discrete cook cycles + crafting signals) instead of WorkerBearManager's continuous tick.")]
+        public bool isCraftingStation;
+
         [Header("Cost Curve  (cost = baseCost * growth^level)")]
         public ResourceData costResource;
         public double baseCost = 10;
         public float costGrowthFactor = 1.15f;
         [Tooltip("0 = uncapped.")]
         public int maxLevel;
+
+        /// <summary>Linear level multiplier per the design formula: Production_n = Base * (levelProductionMultiplier * n). 0 when unowned.</summary>
+        public double GetProductionMultiplier(int level)
+        {
+            return levelProductionMultiplier * level;
+        }
 
         /// <summary>Cost of buying the upgrade that takes the building TO level+1 (level is current, 0-based for unowned).</summary>
         public double GetCostForLevel(int level)
