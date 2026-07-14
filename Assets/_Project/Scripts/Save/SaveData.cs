@@ -12,7 +12,7 @@ namespace NatureBears.Save
     /// </summary>
     public class SaveData
     {
-        public int version = 1;
+        public int version = 2;
 
         // --- Time / anti-cheat ---
         /// <summary>ISO-8601 round-trip ("o") UTC timestamp of the last save.</summary>
@@ -28,9 +28,14 @@ namespace NatureBears.Save
         public double slumberPoints;
         public List<string> unlockedSkillNodeIds = new List<string>();
 
-        // --- Economy (keys = ResourceData.id / BuildingData.id) ---
+        // --- Economy (resources keys = ResourceType enum names; buildings keys = BuildingData.id) ---
         public Dictionary<string, double> resources = new Dictionary<string, double>();
         public Dictionary<string, int> buildingLevels = new Dictionary<string, int>();
+
+        // --- Fever Pitch ---
+        public int feverActivationsToday;
+        /// <summary>UTC date "yyyy-MM-dd" of the last fever activation; drives the daily rollover.</summary>
+        public string feverLastActivationDateUtc;
 
         // --- Monetization ---
         public bool adsRemoved;

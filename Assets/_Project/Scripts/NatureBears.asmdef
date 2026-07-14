@@ -2,7 +2,9 @@
     "name": "NatureBears",
     "rootNamespace": "NatureBears",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

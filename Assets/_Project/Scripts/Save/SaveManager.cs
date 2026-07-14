@@ -51,7 +51,12 @@ namespace NatureBears.Save
             Instance = this;
             DontDestroyOnLoad(gameObject);
             _filePath = Path.Combine(Application.persistentDataPath, FileName);
+        }
 
+        private void Start()
+        {
+            // Load in Start (not Awake): all managers subscribe to GameLoadedSignal
+            // in their Awake, and Awake order across objects is nondeterministic.
             Load();
         }
 
@@ -86,7 +91,7 @@ namespace NatureBears.Save
 
             _offlineSecondsAtLoad = isNewGame ? 0 : ValidateTimeAndGetOfflineSeconds();
 
-            SignalBus.Fire(new GameLoadedSignal(isNewGame, GetOfflineSeconds()));
+            SignalBus.Fire(new GameLoadedSignal(isNewGame, GetOfflineSeconds(), Data));
         }
 
         public void Save()
@@ -94,6 +99,10 @@ namespace NatureBears.Save
             if (Data == null) return;
 
             Data.lastSaveTimeUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+
+            // Let gameplay systems write their runtime state into Data before it
+            // is serialized — keeps SaveManager decoupled from them (SignalBus only).
+            SignalBus.Fire(new GameSavingSignal(Data));
 
             try
             {

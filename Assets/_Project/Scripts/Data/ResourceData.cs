@@ -12,6 +12,8 @@ namespace NatureBears.Data
         [Header("Identity")]
         [Tooltip("Stable unique id used as save-file key. Never change after release.")]
         public string id;
+        [Tooltip("Enum bridge used by gameplay code and signals; keep in sync with id.")]
+        public ResourceType resourceType;
         public string displayName;
         public Sprite icon;
 

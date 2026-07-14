@@ -1,11 +1,12 @@
+using NatureBears.Data;
 using NatureBears.Monetization;
+using NatureBears.Save;
 
 namespace NatureBears.Core
 {
     // ---------------------------------------------------------------------
     // Global signal definitions. Signals are immutable plain structs fired
-    // through SignalBus. Gameplay signals (OnTimberwoodGathered,
-    // OnFeverPitchStarted, ...) will be added alongside their systems.
+    // through SignalBus.
     // ---------------------------------------------------------------------
 
     /// <summary>Fired by SaveManager once a save file has been loaded (or a new game created).</summary>
@@ -14,17 +15,97 @@ namespace NatureBears.Core
         public readonly bool IsNewGame;
         /// <summary>Seconds since the last save. 0 when offline earnings are capped (time cheat).</summary>
         public readonly double OfflineSeconds;
+        /// <summary>The loaded save state — subscribers hydrate their runtime state from it.</summary>
+        public readonly SaveData Data;
 
-        public GameLoadedSignal(bool isNewGame, double offlineSeconds)
+        public GameLoadedSignal(bool isNewGame, double offlineSeconds, SaveData data)
         {
             IsNewGame = isNewGame;
             OfflineSeconds = offlineSeconds;
+            Data = data;
+        }
+    }
+
+    /// <summary>
+    /// Fired by SaveManager immediately BEFORE serializing to disk.
+    /// Subscribers write their runtime state into <see cref="Data"/> so it is
+    /// captured in the save — SaveManager never references gameplay systems.
+    /// </summary>
+    public readonly struct GameSavingSignal
+    {
+        public readonly SaveData Data;
+
+        public GameSavingSignal(SaveData data)
+        {
+            Data = data;
         }
     }
 
     /// <summary>Fired by SaveManager after a successful write to disk.</summary>
     public readonly struct GameSavedSignal
     {
+    }
+
+    /// <summary>
+    /// Fired by any producer (TapManager, worker buildings, ...) when resources
+    /// are earned. ResourceManager is the sole subscriber that mutates balances.
+    /// </summary>
+    public readonly struct OnResourceGatheredSignal
+    {
+        public readonly ResourceType Type;
+        public readonly double Amount;
+
+        public OnResourceGatheredSignal(ResourceType type, double amount)
+        {
+            Type = type;
+            Amount = amount;
+        }
+    }
+
+    /// <summary>Fired ONLY by ResourceManager after any balance mutation (gain or spend).</summary>
+    public readonly struct OnResourceBalanceChangedSignal
+    {
+        public readonly ResourceType Type;
+        public readonly double NewBalance;
+
+        public OnResourceBalanceChangedSignal(ResourceType type, double newBalance)
+        {
+            Type = type;
+            NewBalance = newBalance;
+        }
+    }
+
+    /// <summary>
+    /// Fired on every campfire tap — including blocked ones (fever already
+    /// active or daily limit reached), so the UI can give deny feedback.
+    /// Gauge fill fraction = GaugeTaps / TapsToFill.
+    /// </summary>
+    public readonly struct OnCampfireTappedSignal
+    {
+        public readonly int GaugeTaps;
+        public readonly int TapsToFill;
+
+        public OnCampfireTappedSignal(int gaugeTaps, int tapsToFill)
+        {
+            GaugeTaps = gaugeTaps;
+            TapsToFill = tapsToFill;
+        }
+    }
+
+    /// <summary>
+    /// Fired by TapManager on fever start, on each whole-second boundary of the
+    /// countdown, and on fever end — the UI renders these instead of polling.
+    /// </summary>
+    public readonly struct OnFeverPitchStateChangedSignal
+    {
+        public readonly bool IsActive;
+        public readonly float RemainingSeconds;
+
+        public OnFeverPitchStateChangedSignal(bool isActive, float remainingSeconds)
+        {
+            IsActive = isActive;
+            RemainingSeconds = remainingSeconds;
+        }
     }
 
     /// <summary>
