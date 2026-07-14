@@ -1,0 +1,8 @@
+<linker>
+  <!-- Newtonsoft populates SaveData via reflection; IL2CPP Managed Stripping
+       would otherwise remove "unused" setters/ctors. -->
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+  <assembly fullname="NatureBears">
+    <type fullname="NatureBears.Save.SaveData" preserve="all" />
+  </assembly>
+</linker>
