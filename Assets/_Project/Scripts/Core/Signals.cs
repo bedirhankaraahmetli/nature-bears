@@ -283,4 +283,27 @@ namespace NatureBears.Core
             PotentialPoints = potentialPoints;
         }
     }
+
+    /// <summary>
+    /// Fired by SkillManager after a Slumber Tree purchase completes (points
+    /// already spent, save already forced) with <see cref="IsUnlocked"/> = true,
+    /// and once per known node (locked ones included) on load-hydration —
+    /// skill UI renders from this instead of polling.
+    /// </summary>
+    public readonly struct OnSkillUnlockedSignal
+    {
+        public readonly string SkillId;
+        public readonly SkillEffectType EffectType;
+        public readonly double EffectValue;
+        /// <summary>Always true for a purchase; the saved state on load-hydration.</summary>
+        public readonly bool IsUnlocked;
+
+        public OnSkillUnlockedSignal(string skillId, SkillEffectType effectType, double effectValue, bool isUnlocked)
+        {
+            SkillId = skillId;
+            EffectType = effectType;
+            EffectValue = effectValue;
+            IsUnlocked = isUnlocked;
+        }
+    }
 }

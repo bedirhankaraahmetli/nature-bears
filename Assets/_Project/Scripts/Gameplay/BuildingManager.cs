@@ -65,10 +65,19 @@ namespace NatureBears.Gameplay
             return buildingId != null && _levels.TryGetValue(buildingId, out int level) ? level : 0;
         }
 
-        /// <summary>Cost of the next level (purchase when unowned, upgrade otherwise).</summary>
+        /// <summary>
+        /// Cost of the next level (purchase when unowned, upgrade otherwise),
+        /// after the Slumber Tree CheaperTents discount.
+        /// </summary>
         public double GetUpgradeCost(BuildingData data)
         {
-            return data != null ? data.GetCostForLevel(GetLevel(data.id)) : 0;
+            if (data == null) return 0;
+
+            double costMult = SkillManager.Instance != null
+                ? SkillManager.Instance.BuildingCostMultiplier
+                : 1.0;
+
+            return data.GetCostForLevel(GetLevel(data.id)) * costMult;
         }
 
         public bool IsMaxLevel(BuildingData data)
@@ -85,7 +94,7 @@ namespace NatureBears.Gameplay
             if (data == null || data.costResource == null || IsMaxLevel(data)) return false;
 
             int currentLevel = GetLevel(data.id);
-            double cost = data.GetCostForLevel(currentLevel);
+            double cost = GetUpgradeCost(data);
 
             if (ResourceManager.Instance == null ||
                 !ResourceManager.Instance.TrySpend(data.costResource.resourceType, cost))

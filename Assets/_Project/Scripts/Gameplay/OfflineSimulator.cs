@@ -8,9 +8,10 @@ namespace NatureBears.Gameplay
 {
     /// <summary>
     /// Grants offline earnings on load. GameLoadedSignal already delivers
-    /// anti-time-skip-capped offline seconds; this simulator caps them at 24h,
-    /// computes closed-form gains for pure raw producers (converters and
-    /// crafting never run offline) and grants them via OnResourceGatheredSignal.
+    /// anti-time-skip-capped offline seconds; this simulator caps them at 24h
+    /// (plus Slumber Tree OfflineDurationCap bonuses), computes closed-form
+    /// gains for pure raw producers (converters and crafting never run offline)
+    /// and grants them via OnResourceGatheredSignal.
     /// Processing is deferred one frame past the load signal so every manager
     /// is guaranteed hydrated regardless of Awake/subscription order.
     /// </summary>
@@ -18,13 +19,10 @@ namespace NatureBears.Gameplay
     {
         public static OfflineSimulator Instance { get; private set; }
 
-        // TODO (skill tree): SkillEffectType.OfflineDurationCap raises this.
-        private const double MaxOfflineSeconds = 24.0 * 3600.0;
+        // Base cap; Slumber Tree OfflineDurationCap nodes add seconds on top.
+        private const double BaseMaxOfflineSeconds = 24.0 * 3600.0;
         // Below this the pass is skipped entirely (new game, hibernation reload).
         private const double MinProcessSeconds = 1.0;
-        // TODO (skill tree): SkillEffectType.OfflineEarningsMultiplier scales this;
-        // the OfflineMultiplier2x rewarded ad hooks in here too.
-        private const double OfflineEarningsMultiplier = 1.0;
 
         // Only raw gathering happens offline — matches the pure-producer filter
         // in WorkerBearManager.GetPassiveRatePerSecond.
@@ -79,13 +77,23 @@ namespace NatureBears.Gameplay
             if (!_hasPending) return;
 
             // Safe here: SignalBus.Fire is synchronous and SaveManager loads in
-            // Start(), so every GameLoadedSignal handler (resource/building
+            // Start(), so every GameLoadedSignal handler (resource/building/skill
             // hydration included) completed before this frame's Update.
             _hasPending = false;
-            Process(Math.Min(_pendingOfflineSeconds, MaxOfflineSeconds));
+
+            double capSeconds = BaseMaxOfflineSeconds;
+            double earningsMultiplier = 1.0;
+            if (SkillManager.Instance != null)
+            {
+                capSeconds += SkillManager.Instance.OfflineCapBonusSeconds;
+                earningsMultiplier = SkillManager.Instance.OfflineEarningsMultiplier;
+            }
+            // TODO: the OfflineMultiplier2x rewarded ad also scales earningsMultiplier.
+
+            Process(Math.Min(_pendingOfflineSeconds, capSeconds), earningsMultiplier);
         }
 
-        private void Process(double cappedSeconds)
+        private void Process(double cappedSeconds, double earningsMultiplier)
         {
             var gains = new Dictionary<ResourceType, double>(OfflineTypes.Length);
 
@@ -95,7 +103,7 @@ namespace NatureBears.Gameplay
                     ? WorkerBearManager.Instance.GetPassiveRatePerSecond(OfflineTypes[i])
                     : 0;
 
-                double gain = rate * cappedSeconds * OfflineEarningsMultiplier;
+                double gain = rate * cappedSeconds * earningsMultiplier;
                 if (gain <= 0) continue;
 
                 gains[OfflineTypes[i]] = gain;

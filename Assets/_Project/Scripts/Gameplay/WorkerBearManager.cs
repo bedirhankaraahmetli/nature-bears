@@ -86,8 +86,9 @@ namespace NatureBears.Gameplay
 
         /// <summary>
         /// Passive output per second of one resource from PURE producers only
-        /// (no inputs, not a crafting station, level > 0). Fever Pitch is
-        /// excluded — it never applies offline. Used by OfflineSimulator.
+        /// (no inputs, not a crafting station, level > 0). Includes the Slumber
+        /// Tree global production multiplier; Fever Pitch is excluded — it never
+        /// applies offline. Used by OfflineSimulator.
         /// </summary>
         public double GetPassiveRatePerSecond(ResourceType type)
         {
@@ -116,7 +117,11 @@ namespace NatureBears.Gameplay
                 }
             }
 
-            return total;
+            double skillMult = SkillManager.Instance != null
+                ? SkillManager.Instance.GlobalProductionMultiplier
+                : 1.0;
+
+            return total * skillMult;
         }
 
         /// <summary>
@@ -131,6 +136,9 @@ namespace NatureBears.Gameplay
             if (manager == null || stash == null) return;
 
             double fever = TapManager.Instance != null ? TapManager.Instance.ActiveMultiplier : 1.0;
+            double skillMult = SkillManager.Instance != null
+                ? SkillManager.Instance.GlobalProductionMultiplier
+                : 1.0;
 
             for (int i = 0; i < _runtime.Length && i < manager.Buildings.Count; i++)
             {
@@ -168,9 +176,10 @@ namespace NatureBears.Gameplay
                         ResourceRate rate = data.produces[p];
                         if (rate.resource == null) continue;
 
-                        // Fever Pitch boosts outputs only — never input burn.
+                        // Fever Pitch and Slumber skills boost outputs only —
+                        // never input burn.
                         SignalBus.Fire(new OnResourceGatheredSignal(
-                            rate.resource.resourceType, rate.amountPerCycle * mult * fever));
+                            rate.resource.resourceType, rate.amountPerCycle * mult * fever * skillMult));
                     }
                 }
 
