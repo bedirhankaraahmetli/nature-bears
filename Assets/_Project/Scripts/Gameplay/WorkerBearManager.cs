@@ -79,8 +79,44 @@ namespace NatureBears.Gameplay
                     SignalBus.Fire(new OnBuildingProductionStateChangedSignal(data.id, false));
             }
 
-            // TODO (offline-earnings phase): TickAll(signal.OfflineSeconds) here —
-            // SaveManager already delivers anti-cheat-capped seconds in the signal.
+            // Offline earnings are handled by OfflineSimulator via
+            // GetPassiveRatePerSecond (closed-form) — ticking TickAll with hours
+            // of offline time would fire one signal per output per cycle.
+        }
+
+        /// <summary>
+        /// Passive output per second of one resource from PURE producers only
+        /// (no inputs, not a crafting station, level > 0). Fever Pitch is
+        /// excluded — it never applies offline. Used by OfflineSimulator.
+        /// </summary>
+        public double GetPassiveRatePerSecond(ResourceType type)
+        {
+            BuildingManager manager = BuildingManager.Instance;
+            if (manager == null) return 0;
+
+            double total = 0;
+
+            for (int i = 0; i < manager.Buildings.Count; i++)
+            {
+                BuildingData data = manager.Buildings[i];
+                if (data == null || data.isCraftingStation || data.consumes.Count > 0) continue;
+
+                int level = manager.GetLevel(data.id);
+                if (level <= 0) continue;
+
+                double mult = data.GetProductionMultiplier(level);
+                float cycleDuration = Mathf.Max(data.cycleDurationSeconds, 0.05f);
+
+                for (int p = 0; p < data.produces.Count; p++)
+                {
+                    ResourceRate rate = data.produces[p];
+                    if (rate.resource == null || rate.resource.resourceType != type) continue;
+
+                    total += rate.amountPerCycle * mult / cycleDuration;
+                }
+            }
+
+            return total;
         }
 
         /// <summary>

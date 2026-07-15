@@ -35,6 +35,11 @@ namespace NatureBears.UI
         [SerializeField] private GameObject feverActiveRoot;
         [SerializeField] private TMP_Text feverTimerText;
 
+        [Header("Offline Gains Popup")]
+        [Tooltip("Inactive by default; shown when the player was away > 60s with gains.")]
+        [SerializeField] private GameObject offlinePopupRoot;
+        [SerializeField] private TMP_Text offlinePopupText;
+
         private readonly Dictionary<ResourceType, TMP_Text> _labelByType =
             new Dictionary<ResourceType, TMP_Text>(8);
         private readonly Dictionary<ResourceType, double> _lastShownValue =
@@ -71,6 +76,7 @@ namespace NatureBears.UI
             SignalBus.Subscribe<OnResourceBalanceChangedSignal>(HandleBalanceChanged);
             SignalBus.Subscribe<OnCampfireTappedSignal>(HandleCampfireTapped);
             SignalBus.Subscribe<OnFeverPitchStateChangedSignal>(HandleFeverStateChanged);
+            SignalBus.Subscribe<OnOfflineGainsCalculatedSignal>(HandleOfflineGains);
         }
 
         private void OnDestroy()
@@ -80,6 +86,19 @@ namespace NatureBears.UI
             SignalBus.Unsubscribe<OnResourceBalanceChangedSignal>(HandleBalanceChanged);
             SignalBus.Unsubscribe<OnCampfireTappedSignal>(HandleCampfireTapped);
             SignalBus.Unsubscribe<OnFeverPitchStateChangedSignal>(HandleFeverStateChanged);
+            SignalBus.Unsubscribe<OnOfflineGainsCalculatedSignal>(HandleOfflineGains);
+        }
+
+        // ------------------------------------------------------------------
+        // Public API (inspector-wired buttons)
+        // ------------------------------------------------------------------
+
+        /// <summary>Wired to the offline popup's Collect button — gains are
+        /// already granted, closing is pure acknowledgement.</summary>
+        public void HideOfflinePopup()
+        {
+            if (offlinePopupRoot != null)
+                offlinePopupRoot.SetActive(false);
         }
 
         // ------------------------------------------------------------------
@@ -104,6 +123,49 @@ namespace NatureBears.UI
 
             feverGaugeSlider.maxValue = signal.TapsToFill;
             feverGaugeSlider.value = signal.GaugeTaps;
+        }
+
+        private void HandleOfflineGains(OnOfflineGainsCalculatedSignal signal)
+        {
+            if (offlinePopupRoot == null || offlinePopupText == null) return;
+            if (signal.OfflineSeconds <= 60 || signal.Gains.Count == 0) return;
+
+            // One-shot allocation on load — never per-frame.
+            var sb = new System.Text.StringBuilder(128);
+
+            int totalMinutes = (int)(signal.OfflineSeconds / 60);
+            int hours = totalMinutes / 60;
+            int minutes = totalMinutes % 60;
+            sb.Append("While you were away (");
+            if (hours > 0) sb.Append(hours).Append("h ");
+            sb.Append(minutes).Append("m):");
+
+            foreach (KeyValuePair<ResourceType, double> gain in signal.Gains)
+            {
+                sb.Append('\n').Append(GetResourceDisplayName(gain.Key))
+                  .Append(" +").Append(NumberFormatter.Format(gain.Value));
+            }
+
+            // TODO (ads): "Double it!" button → RewardedAdType.OfflineMultiplier2x,
+            // re-grant the cached gains on RewardedAdCompletedSignal.
+            offlinePopupText.text = sb.ToString();
+            offlinePopupRoot.SetActive(true);
+        }
+
+        private static string GetResourceDisplayName(ResourceType type)
+        {
+            switch (type)
+            {
+                case ResourceType.Timberwood: return "Timberwood";
+                case ResourceType.FreshSalmon: return "Fresh Salmon";
+                case ResourceType.RareWildflowers: return "Rare Wildflowers";
+                case ResourceType.ForestMushrooms: return "Forest Mushrooms";
+                case ResourceType.Embers: return "Embers";
+                case ResourceType.Meals: return "Meals";
+                case ResourceType.GoldenHoney: return "Golden Honey";
+                case ResourceType.SlumberPoints: return "Slumber Points";
+                default: return type.ToString();
+            }
         }
 
         private void HandleFeverStateChanged(OnFeverPitchStateChangedSignal signal)

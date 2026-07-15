@@ -12,7 +12,7 @@ namespace NatureBears.Save
     /// </summary>
     public class SaveData
     {
-        public int version = 2;
+        public int version = 3;
 
         // --- Time / anti-cheat ---
         /// <summary>ISO-8601 round-trip ("o") UTC timestamp of the last save.</summary>
@@ -25,7 +25,10 @@ namespace NatureBears.Save
         // --- Progression ---
         public int hibernationCount;
         public string currentBiomeId;
-        public double slumberPoints;
+        /// <summary>All-time Golden Honey earned THIS run — drives the Slumber Point
+        /// formula. Reset to 0 on hibernation. (The Slumber Point balance itself
+        /// lives in <see cref="resources"/> like every other resource.)</summary>
+        public double totalGoldenHoneyThisRun;
         public List<string> unlockedSkillNodeIds = new List<string>();
 
         // --- Economy (resources keys = ResourceType enum names; buildings keys = BuildingData.id) ---

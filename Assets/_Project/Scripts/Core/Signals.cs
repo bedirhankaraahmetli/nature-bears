@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NatureBears.Data;
 using NatureBears.Monetization;
 using NatureBears.Save;
@@ -230,5 +231,56 @@ namespace NatureBears.Core
     /// <summary>Fired by ObscuredDouble/ObscuredLong when in-memory tampering is detected.</summary>
     public readonly struct CurrencyTamperDetectedSignal
     {
+    }
+
+    /// <summary>
+    /// Fired once by OfflineSimulator after offline gains have been granted to
+    /// the stash. May carry an empty dictionary (no producers owned) — the UI
+    /// decides whether to show a popup.
+    /// </summary>
+    public readonly struct OnOfflineGainsCalculatedSignal
+    {
+        /// <summary>Resource → amount granted. One-shot allocation per load; do not cache long-term.</summary>
+        public readonly IReadOnlyDictionary<ResourceType, double> Gains;
+        /// <summary>The offline duration actually simulated, after the 24h cap.</summary>
+        public readonly double OfflineSeconds;
+
+        public OnOfflineGainsCalculatedSignal(IReadOnlyDictionary<ResourceType, double> gains, double offlineSeconds)
+        {
+            Gains = gains;
+            OfflineSeconds = offlineSeconds;
+        }
+    }
+
+    /// <summary>
+    /// Fired by PrestigeManager at the START of a hibernation, before the award
+    /// and the save/reload. Managers reset their per-run state in handlers of
+    /// this signal (ResourceManager zeroes balances, BuildingManager clears levels).
+    /// </summary>
+    public readonly struct OnHibernationStartedSignal
+    {
+        public readonly double SlumberPointsAwarded;
+        public readonly int NewHibernationCount;
+
+        public OnHibernationStartedSignal(double slumberPointsAwarded, int newHibernationCount)
+        {
+            SlumberPointsAwarded = slumberPointsAwarded;
+            NewHibernationCount = newHibernationCount;
+        }
+    }
+
+    /// <summary>
+    /// Fired by PrestigeManager only when floor(potential slumber points)
+    /// actually changes (and once on load-hydration) — the Hibernate button
+    /// renders from this instead of polling.
+    /// </summary>
+    public readonly struct OnPotentialSlumberPointsChangedSignal
+    {
+        public readonly double PotentialPoints;
+
+        public OnPotentialSlumberPointsChangedSignal(double potentialPoints)
+        {
+            PotentialPoints = potentialPoints;
+        }
     }
 }

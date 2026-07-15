@@ -43,6 +43,7 @@ namespace NatureBears.Gameplay
 
             SignalBus.Subscribe<GameLoadedSignal>(HandleGameLoaded);
             SignalBus.Subscribe<GameSavingSignal>(HandleGameSaving);
+            SignalBus.Subscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
         }
 
         private void OnDestroy()
@@ -51,6 +52,7 @@ namespace NatureBears.Gameplay
 
             SignalBus.Unsubscribe<GameLoadedSignal>(HandleGameLoaded);
             SignalBus.Unsubscribe<GameSavingSignal>(HandleGameSaving);
+            SignalBus.Unsubscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
         }
 
         // ------------------------------------------------------------------
@@ -118,8 +120,27 @@ namespace NatureBears.Gameplay
             }
         }
 
+        private void HandleHibernationStarted(OnHibernationStartedSignal signal)
+        {
+            _levels.Clear();
+
+            // Mirror the load-hydration broadcast so upgrade buttons and worker
+            // views refresh to level 0 without polling.
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                BuildingData data = buildings[i];
+                if (data == null) continue;
+
+                SignalBus.Fire(new OnBuildingUpgradedSignal(data.id, 0, 0));
+            }
+        }
+
         private void HandleGameSaving(GameSavingSignal signal)
         {
+            // Rebuild from live state — stale keys (e.g. levels cleared by a
+            // hibernation) must not survive in the save file.
+            signal.Data.buildingLevels.Clear();
+
             foreach (KeyValuePair<string, int> pair in _levels)
                 signal.Data.buildingLevels[pair.Key] = pair.Value;
         }

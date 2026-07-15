@@ -44,6 +44,7 @@ namespace NatureBears.Gameplay
             SignalBus.Subscribe<OnResourceGatheredSignal>(HandleResourceGathered);
             SignalBus.Subscribe<GameLoadedSignal>(HandleGameLoaded);
             SignalBus.Subscribe<GameSavingSignal>(HandleGameSaving);
+            SignalBus.Subscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
         }
 
         private void OnDestroy()
@@ -53,6 +54,7 @@ namespace NatureBears.Gameplay
             SignalBus.Unsubscribe<OnResourceGatheredSignal>(HandleResourceGathered);
             SignalBus.Unsubscribe<GameLoadedSignal>(HandleGameLoaded);
             SignalBus.Unsubscribe<GameSavingSignal>(HandleGameSaving);
+            SignalBus.Unsubscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
         }
 
         // ------------------------------------------------------------------
@@ -126,6 +128,20 @@ namespace NatureBears.Gameplay
 
                 // Broadcast every type (including zeros) so UI labels hydrate.
                 FireBalanceChanged(type, saved);
+            }
+        }
+
+        private void HandleHibernationStarted(OnHibernationStartedSignal signal)
+        {
+            // Only Slumber Points survive a hibernation. PrestigeManager fires
+            // the award AFTER this handler, so it can't be wiped here.
+            for (int i = 0; i < AllTypes.Length; i++)
+            {
+                ResourceType type = AllTypes[i];
+                if (type == ResourceType.SlumberPoints) continue;
+
+                _balances[type] = 0;
+                FireBalanceChanged(type, 0);
             }
         }
 

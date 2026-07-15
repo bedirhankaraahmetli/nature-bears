@@ -125,6 +125,19 @@ namespace NatureBears.Save
             }
         }
 
+        /// <summary>
+        /// Re-fires GameLoadedSignal from the in-memory Data for an in-place
+        /// rehydrate (hibernation). No disk read; OfflineSeconds is forced to 0
+        /// so no offline pass runs on the reload.
+        /// </summary>
+        public void ReloadFromMemory()
+        {
+            if (Data == null) return;
+
+            _offlineSecondsAtLoad = 0;
+            SignalBus.Fire(new GameLoadedSignal(false, 0, Data));
+        }
+
         public void DeleteSave()
         {
             try
