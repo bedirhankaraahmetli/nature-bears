@@ -19,8 +19,13 @@ namespace NatureBears.Audio
     /// organic loops — crackling fire, stream), SFX (tactile — twig snaps,
     /// bubble pops for UI).
     ///
-    /// SETUP (in-editor, later): create Assets/_Project/Audio/MainMixer.mixer
-    /// with groups BGM/Ambient/SFX under Master and expose the params
+    /// Purely signal-driven for gameplay feedback: gameplay systems never call
+    /// this class — they fire signals and AudioManager reacts. UI buttons go
+    /// through <see cref="PlaySound"/> / <see cref="PlayUIClick"/> (via the
+    /// UIButtonSound component) so they stay decoupled too.
+    ///
+    /// SETUP (in-editor): create Assets/_Project/Audio/MainMixer.mixer with
+    /// groups BGM/Ambient/SFX under Master and expose the params
     /// "MasterVolume", "BGMVolume", "AmbientVolume", "SFXVolume".
     /// Everything below is null-guarded so the project runs with placeholders
     /// (or no mixer at all) until then.
@@ -38,8 +43,32 @@ namespace NatureBears.Audio
         [Tooltip("Small round-robin pool so overlapping taps don't cut each other off.")]
         [SerializeField] private AudioSource[] sfxSources;
 
+        [Header("Startup Loops (placeholders OK — hot-swap final assets later)")]
+        [SerializeField] private AudioClip defaultBGM;
+        [SerializeField] private AudioClip defaultAmbient;
+
+        [Header("Signal-Driven Clips (all optional / null-guarded)")]
+        [Tooltip("Soft thwack/pop on OnResourceGatheredSignal (throttled).")]
+        [SerializeField] private AudioClip gatherPopClip;
+        [Tooltip("Minimum seconds between two gather pops — passive producers tick constantly.")]
+        [SerializeField] private float gatherSfxCooldown = 0.12f;
+        [Tooltip("Warm thunk on a paid building upgrade.")]
+        [SerializeField] private AudioClip upgradeClip;
+        [Tooltip("Soft chime when Chef Panda finishes a meal.")]
+        [SerializeField] private AudioClip craftCompletedClip;
+        [Tooltip("Whoosh/crackle burst when Fever Pitch activates.")]
+        [SerializeField] private AudioClip feverStartClip;
+        [Tooltip("Sleepy lullaby stinger when Hibernation begins.")]
+        [SerializeField] private AudioClip hibernationClip;
+
+        [Header("UI Clips")]
+        [Tooltip("Default soft click/page-turn used by PlayUIClick (UIButtonSound falls back to this).")]
+        [SerializeField] private AudioClip uiClickClip;
+
         private int _nextSfxIndex;
         private Coroutine _bgmFadeRoutine;
+        private float _nextGatherSfxTime;
+        private bool _feverWasActive;
 
         private static readonly string[] ExposedParams =
         {
@@ -62,6 +91,86 @@ namespace NatureBears.Audio
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            SignalBus.Subscribe<OnResourceGatheredSignal>(HandleResourceGathered);
+            SignalBus.Subscribe<OnBuildingUpgradedSignal>(HandleBuildingUpgraded);
+            SignalBus.Subscribe<OnCraftingCompletedSignal>(HandleCraftingCompleted);
+            SignalBus.Subscribe<OnFeverPitchStateChangedSignal>(HandleFeverStateChanged);
+            SignalBus.Subscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
+        }
+
+        private void Start()
+        {
+            PlayBGM(defaultBGM);
+            PlayAmbient(defaultAmbient);
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance != this) return;
+
+            SignalBus.Unsubscribe<OnResourceGatheredSignal>(HandleResourceGathered);
+            SignalBus.Unsubscribe<OnBuildingUpgradedSignal>(HandleBuildingUpgraded);
+            SignalBus.Unsubscribe<OnCraftingCompletedSignal>(HandleCraftingCompleted);
+            SignalBus.Unsubscribe<OnFeverPitchStateChangedSignal>(HandleFeverStateChanged);
+            SignalBus.Unsubscribe<OnHibernationStartedSignal>(HandleHibernationStarted);
+        }
+
+        // ------------------------------------------------------------------
+        // Signal handlers (gameplay feedback — never called directly)
+        // ------------------------------------------------------------------
+
+        private void HandleResourceGathered(OnResourceGatheredSignal signal)
+        {
+            // Taps AND passive worker cycles land here; the cooldown keeps a
+            // busy camp sounding like soft rain, not a machine gun.
+            if (Time.unscaledTime < _nextGatherSfxTime) return;
+
+            _nextGatherSfxTime = Time.unscaledTime + gatherSfxCooldown;
+            PlaySFX(gatherPopClip, 0.08f);
+        }
+
+        private void HandleBuildingUpgraded(OnBuildingUpgradedSignal signal)
+        {
+            // UpgradeCost == 0 is the load-hydration broadcast, not a purchase.
+            if (signal.UpgradeCost <= 0) return;
+            PlaySFX(upgradeClip);
+        }
+
+        private void HandleCraftingCompleted(OnCraftingCompletedSignal signal)
+        {
+            PlaySFX(craftCompletedClip, 0.05f);
+        }
+
+        private void HandleFeverStateChanged(OnFeverPitchStateChangedSignal signal)
+        {
+            // The signal also fires every countdown second — react to the
+            // inactive -> active transition only.
+            if (signal.IsActive && !_feverWasActive)
+                PlaySFX(feverStartClip);
+
+            _feverWasActive = signal.IsActive;
+        }
+
+        private void HandleHibernationStarted(OnHibernationStartedSignal signal)
+        {
+            PlaySFX(hibernationClip);
+        }
+
+        // ------------------------------------------------------------------
+        // UI hooks
+        // ------------------------------------------------------------------
+
+        /// <summary>Simple one-shot for UI (page-turns, clicks). Routed through the SFX mixer group.</summary>
+        public void PlaySound(AudioClip clip)
+        {
+            PlaySFX(clip);
+        }
+
+        /// <summary>Default soft UI click — used by UIButtonSound when no override clip is set.</summary>
+        public void PlayUIClick()
+        {
+            PlaySFX(uiClickClip, 0.05f);
         }
 
         // ------------------------------------------------------------------
